@@ -69,8 +69,10 @@ aws s3 cp llama2_7b-training.sbatch s3://${S3_BUCKET_NAME}/ --region $REGION
 aws eks update-kubeconfig --name slurm-on-eks
 
 # Install Slurm Cluster
-helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
- --values=slurm-values.yaml --version=0.4.0 --namespace=slurm --create-namespace --set global.kubeVersionOverride="1.33.4"
+# helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
+#  --values=slurm-values.yaml --version=0.4.0 --namespace=slurm --create-namespace
+helm install slurm ./slurm \
+ --values=slurm-values.yaml --version=0.4.0 --namespace=slurm --create-namespace
 
 # Wait for the slurm-login service to exist
 until kubectl get service slurm-login -n slurm >/dev/null 2>&1; do
