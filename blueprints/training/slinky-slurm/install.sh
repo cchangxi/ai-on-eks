@@ -70,7 +70,7 @@ aws eks update-kubeconfig --name slurm-on-eks
 
 # Install Slurm Cluster
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
- --values=slurm-values.yaml --version=0.3.0 --namespace=slurm --create-namespace
+ --values=slurm-values.yaml --version=0.4.0 --namespace=slurm --create-namespace
 
 # Wait for the slurm-login service to exist
 until kubectl get service slurm-login -n slurm >/dev/null 2>&1; do

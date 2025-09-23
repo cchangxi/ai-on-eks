@@ -1,4 +1,9 @@
-# Inter-pod anti-affinity and node affinity for non-compute components
+# SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+# SPDX-License-Identifier: Apache-2.0
+
+# -------------------------
+# Common affinity for non-compute components
+# -------------------------
 commonAffinity: &commonAffinity
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -19,74 +24,129 @@ commonAffinity: &commonAffinity
             values: ["slurmdbd", "slurmctld", "slurm-exporter", "login", "mariadb", "slurmrestd"]
         topologyKey: "kubernetes.io/hostname"
 
+# Optimized Slurm config files supporting Pyxis + Enroot
+configFiles:
+  cgroup.conf: |
+    # Use autodetect to automatically select cgroup plugin
+    CgroupPlugin=autodetect
+    # Do not enforce systemd constraints (more portable for container workloads)
+    IgnoreSystemd=yes
+    # Resource constraints
+    ConstrainCores=yes
+    ConstrainRAMSpace=yes
+    ConstrainSwapSpace=yes
+    ConstrainDevices=yes
+    ConstrainKill=yes               # Kill tasks on step end
+    AllowedSwapSpace=0              # Limit swap usage
+    TaskAffinity=yes                # Enable CPU pinning for container tasks
 
-# Slurm controller (slurmctld) configurations.
+  gres.conf: |
+    # Automatic detection of NVIDIA GPUs
+    Name=gpu Type=any File=/dev/nvidiactl
+    NodeName=DEFAULT Name=gpu Count=AutoDetect
+
+  job_container.conf: |
+    # Enroot + Pyxis configuration
+    AutoBasePath=true               # Automatically mount base paths
+    EntireStepInNS=true             # Run entire job step in namespaces
+    Plugin=pyxis                     # Use Pyxis to manage container runtime
+    AllowUtmp=no                     # Disable writing to utmp/wtmp
+    EnrootCache=/var/tmp/enroot     # Recommended Enroot cache path
+    EnrootTemporary=/tmp             # Temporary writable path
+
+  mpi.conf: |
+    # Minimal MPI debug info for production
+    PMIxDebug=0
+    # Enable proper resource reporting
+    ResvPortRange=50000-51000
+
+  oci.conf: |
+    # Enable debug for OCI-based container runtime
+    FileDebug=debug2
+    # Optionally tune OCI runtimes
+    Runtime=Enroot
+
+  plugstack.conf: |
+    # Pyxis plugstack includes
+    include /usr/share/pyxis/*
+
+
+# -------------------------
+# Global settings
+# -------------------------
+imagePullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# -------------------------
+# Slurm Controller (slurmctld)
+# -------------------------
 controller:
-  affinity: *commonAffinity
   persistence:
-    storageClass: gp3
-
-# Slurm accounting (slurmdbd) configurations.
-accounting:
-  affinity: *commonAffinity
-
-# `bitnami/mariadb` subchart configurations.
-mariadb:
-  primary:
+    storageClassName: gp3
+  podSpec:
     affinity: *commonAffinity
-    persistence:
-      storageClass: gp3
 
-# Slurm REST API (slurmrestd) configurations.
+# -------------------------
+# Slurm Accounting (slurmdbd)
+# -------------------------
+accounting:
+  enabled: true
+  podSpec:
+    affinity: *commonAffinity
+
+# -------------------------
+# Slurm REST API
+# -------------------------
 restapi:
-  affinity: *commonAffinity
+  podSpec:
+    affinity: *commonAffinity
 
-# `slurm-exporter` subchart configurations.
+# -------------------------
+# Slurm Exporter
+# -------------------------
 slurm-exporter:
   exporter:
     affinity: *commonAffinity
 
-# Login node configurations.
-login:
-  enabled: true
-  replicas: 1
-  service:
-    type: LoadBalancer
-  servicePort: 22
-  rootSshAuthorizedKeys:
-    - ${ssh_key}
-  sshdConfig:
-    AuthorizedKeysFile: "/root/.ssh/authorized_keys"
-    ChallengeResponseAuthentication: "no"
-    PasswordAuthentication: "no"
-    PubkeyAuthentication: "yes"
-    PermitRootLogin: "yes"
-    Port: "22"
-  extraVolumeMounts:
-    - name: fsx-lustre
-      mountPath: /fsx
-  extraVolumes:
-     - name: fsx-lustre
-       persistentVolumeClaim:
-        claimName: fsx-static-pvc
-  affinity: *commonAffinity
+# -------------------------
+# Login nodes
+# -------------------------
+loginsets:
+  slinky:
+    enabled: true
+    replicas: 1
+    login:
+      volumeMounts:
+        - name: fsx-lustre
+          mountPath: /fsx
+    rootSshAuthorizedKeys:
+      - ${ssh_key}
+    extraSshdConfig:
+      AuthorizedKeysFile: "/root/.ssh/authorized_keys"
+      ChallengeResponseAuthentication: "no"
+      PasswordAuthentication: "no"
+      PubkeyAuthentication: "yes"
+      PermitRootLogin: "yes"
+      Port: "22"
+    podSpec:
+      affinity: *commonAffinity
+      volumes:
+        - name: fsx-lustre
+          persistentVolumeClaim:
+            claimName: fsx-static-pvc
 
-# Slurm compute (slurmd) configurations.
-compute:
-  nodesets:
-    - name: node
-      enabled: true
-      replicas: 4
+
+# -------------------------
+# Slurm Compute nodes
+# -------------------------
+nodesets:
+  slinky:
+    enabled: true
+    replicas: 1
+    slurmd:
       image:
         repository: ${image_repository}
         tag: ${image_tag}
-      nodeSelector:
-        instanceType: g5-gpu-karpenter
-        kubernetes.io/os: linux
-      tolerations:
-      - key: "nvidia.com/gpu"
-        operator: "Exists"
-        effect: "NoSchedule"
       resources:
         limits:
           nvidia.com/gpu: "1"
@@ -94,17 +154,40 @@ compute:
         requests:
           nvidia.com/gpu: "1"
           vpc.amazonaws.com/efa: 1
-      extraVolumeMounts:
+      nodeSelector:
+        instanceType: g5-gpu-karpenter
+        kubernetes.io/os: linux
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+      volumeMounts:
         - name: fsx-lustre
           mountPath: /fsx
         - name: shmem
           mountPath: /dev/shm
-      extraVolumes:
+    podSpec:
+      affinity: {}
+      nodeSelector:
+        kubernetes.io/os: linux
+      volumes:
         - name: fsx-lustre
           persistentVolumeClaim:
             claimName: fsx-static-pvc
         - name: shmem
           hostPath:
             path: /dev/shm
-      partition:
-        enabled: true
+    partition:
+      enabled: true
+
+
+# -------------------------
+# Vendor-specific configurations
+# -------------------------
+vendor:
+  nvidia:
+    dcgm:
+      enabled: true
+
+
+
