@@ -137,7 +137,7 @@ providing your own value:
 ```hcl
   eks_managed_node_groups = {
   system = {
-    instance_types = ["m5.xlarge"]
+    instance_types = ["m5.4xlarge"]
 
     min_size     = 0
     max_size     = 5
@@ -166,7 +166,7 @@ instances to use the `--instance-type-from-imds` flag to autodiscover the instan
 ```hcl
   eks_managed_node_groups = {
   system = {
-    instance_types = ["m5.xlarge"]
+    instance_types = ["m5.4xlarge"]
 
     min_size     = 0
     max_size     = 5

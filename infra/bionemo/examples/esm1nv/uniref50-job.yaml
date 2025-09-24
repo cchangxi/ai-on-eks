@@ -3,9 +3,13 @@ kind: Job
 metadata:
   name: uniref50-download
 spec:
-  ttlSecondsAfterFinished: 100
+  ttlSecondsAfterFinished: 14400   # 任务结束后再保留 5 分钟，方便调试日志
+  backoffLimit: 2                # 失败重试 2 次
   template:
     spec:
+      restartPolicy: Never
+      nodeSelector:
+        node.kubernetes.io/instance-type: m5.4xlarge   # 确保调度到 m5.4xlarge 节点
       volumes:
       - name: fsx-pv-storage
         persistentVolumeClaim:
@@ -14,23 +18,28 @@ spec:
       - name: bionemo
         image: nvcr.io/nvidia/clara/bionemo-framework:1.2
         resources:
-          limits:
-            cpu: 2000m
-            memory: 4Gi
           requests:
-            cpu: 1000m
-            memory: 2Gi
+            cpu: "15"            # 请求整机的 vCPU (16 核，留 1 核给系统/守护进程)
+            memory: "60Gi"       # 请求绝大部分内存
+          limits:
+            cpu: "15"
+            memory: "60Gi"
         env:
         - name: DATA_PATH
           value: "/fsx"
         command: ["/bin/sh", "-c"]
         args:
           - |
-            echo "from bionemo.data import UniRef50Preprocess" > /tmp/prepare_uniref50.py
-            echo "data = UniRef50Preprocess(root_directory='/fsx')" >> /tmp/prepare_uniref50.py
-            echo "data.prepare_dataset(source='uniprot')" >> /tmp/prepare_uniref50.py
+            cat <<'EOF' > /tmp/prepare_uniref50.py
+            from bionemo.data import UniRef50Preprocess
+
+            data = UniRef50Preprocess(root_directory='/fsx')
+            data.prepare_dataset(source='uniprot')
+            EOF
+
+            echo "=== Starting UniRef50 download & preprocessing ==="
             python3 /tmp/prepare_uniref50.py
+            echo "=== Completed UniRef50 job ==="
         volumeMounts:
-          - mountPath: "/fsx"
-            name: fsx-pv-storage
-      restartPolicy: Never
+        - mountPath: "/fsx"
+          name: fsx-pv-storage

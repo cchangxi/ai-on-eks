@@ -144,7 +144,7 @@ aws eks --region us-west-2 update-kubeconfig --name nvidia-triton-server
 kubectl get nodes # Output shows the EKS worker nodes
 ```
 
-You should see three nodes deployed by this installation: two `m5.xlarge` and one `g5.24xlarge`.
+You should see three nodes deployed by this installation: two `m5.4xlarge` and one `g5.24xlarge`.
 
 ```text
 ip-100-64-190-174.us-west-2.compute.internal   Ready    <none>   11d     v1.29.3-eks-ae9a62a

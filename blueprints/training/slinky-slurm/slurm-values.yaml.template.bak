@@ -7,7 +7,7 @@ commonAffinity: &commonAffinity
           - key: "node.kubernetes.io/instance-type"
             operator: In
             values:
-              - "m5.xlarge"
+              - "m5.4xlarge"
   podAntiAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:
     - weight: 100
