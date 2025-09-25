@@ -19,11 +19,11 @@ spec:
         image: nvcr.io/nvidia/clara/bionemo-framework:1.2
         resources:
           requests:
-            cpu: "15"            # 请求整机的 vCPU (16 核，留 1 核给系统/守护进程)
-            memory: "60Gi"       # 请求绝大部分内存
+            cpu: "14"            # 请求整机的 vCPU (16 核，留 1 核给系统/守护进程)
+            memory: "55Gi"       # 请求绝大部分内存
           limits:
-            cpu: "15"
-            memory: "60Gi"
+            cpu: "14"
+            memory: "55Gi"
         env:
         - name: DATA_PATH
           value: "/fsx"
