@@ -121,13 +121,13 @@ loginsets:
           mountPath: /fsx
     rootSshAuthorizedKeys:
       - ${ssh_key}
-    extraSshdConfig:
-      AuthorizedKeysFile: "/root/.ssh/authorized_keys"
-      ChallengeResponseAuthentication: "no"
-      PasswordAuthentication: "no"
-      PubkeyAuthentication: "yes"
-      PermitRootLogin: "yes"
-      Port: "22"
+    extraSshdConfig: |
+      AuthorizedKeysFile /root/.ssh/authorized_keys
+      ChallengeResponseAuthentication no
+      PasswordAuthentication no
+      PubkeyAuthentication yes
+      PermitRootLogin yes
+      Port 22
     podSpec:
       affinity: *commonAffinity
       volumes:
