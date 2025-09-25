@@ -10,7 +10,7 @@ dependencies:
 description: Slurm Cluster
 home: https://slurm.schedmd.com/
 icon: https://github.com/SlinkyProject/docs/blob/main/docs/_static/images/slurm-square-500.png
-kubeVersion: '>= 1.29'
+# kubeVersion: '>= 1.29'
 maintainers:
 - email: slinky@schedmd.com
   name: SchedMD LLC.
