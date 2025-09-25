@@ -167,9 +167,7 @@ nodesets:
         - name: shmem
           mountPath: /dev/shm
     podSpec:
-      affinity: {}
-      nodeSelector:
-        kubernetes.io/os: linux
+      affinity: *commonAffinity
       volumes:
         - name: fsx-lustre
           persistentVolumeClaim:
@@ -177,8 +175,6 @@ nodesets:
         - name: shmem
           hostPath:
             path: /dev/shm
-    partition:
-      enabled: true
 
 
 # -------------------------
