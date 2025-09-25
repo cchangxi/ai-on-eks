@@ -1,0 +1,81 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- $podMetadata := .Values.controller.metadata | default dict -}}
+{{- $labels := fromYaml (include "slurm.labels" $) -}}
+{{- $podMetadata = merge (dict "labels" $labels) ($podMetadata | default dict) -}}
+{{- $podSpec := .Values.controller.podSpec | default dict -}}
+{{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) (.Values.imagePullSecrets | default list) -}}
+{{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
+{{- $priorityClassName := $podSpec.priorityClassName | default .Values.priorityClassName -}}
+{{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
+{{- $podTemplate := dict "metadata" $podMetadata "spec" $podSpec -}}
+apiVersion: slinky.slurm.net/v1alpha1
+kind: Controller
+metadata:
+  name: {{ include "slurm.fullname" . }}
+  namespace: {{ include "slurm.namespace" . }}
+  labels:
+    {{- include "slurm.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.accounting.enabled }}
+  accountingRef:
+    name: {{ include "slurm.fullname" . }}
+    namespace: {{ include "slurm.namespace" . }}
+  {{- end }}{{- /* if .Values.accounting.enabled */}}
+  slurmKeyRef:
+    {{- if .Values.slurmKeyRef }}
+    {{- toYaml .Values.slurmKeyRef | nindent 4 }}
+    {{- else }}
+    name: {{ include "slurm.authSlurmRef.name" . }}
+    key: {{ include "slurm.authSlurmRef.key" . }}
+    {{- end }}{{- /* if .Values.slurmKeyRef */}}
+  jwtHs256KeyRef:
+    {{- if .Values.jwtHs256KeyRef }}
+    {{- toYaml .Values.jwtHs256KeyRef | nindent 4 }}
+    {{- else }}
+    name: {{ include "slurm.authJwtHs256Ref.name" . }}
+    key: {{ include "slurm.authJwtHs256Ref.key" . }}
+    {{- end }}{{- /* if .Values.jwtHs256KeyRef */}}
+  {{- with .Values.clusterName }}
+  clusterName: {{ . }}
+  {{- end }}{{- /* with .Values.clusterName */}}
+  {{- if (include "slurm.controller.extraConf" .) }}
+  extraConf: |
+    {{- include "slurm.controller.extraConf" . | nindent 4 }}
+  {{- end }}{{- /* if (include "slurm.controller.extraConf" .) */}}
+  {{- with .Values.configFiles }}
+  configFileRefs:
+    - name: {{ include "slurm.controller.configName" $ }}
+  {{- end }}{{- /* with .Values.configFiles */}}
+  prologScriptRefs:
+    {{- with .Values.prologScripts }}
+    - name: {{ include "slurm.controller.prologName" $ }}
+    {{- end }}{{- /* with .Values.prologScripts */}}
+    {{- if (include "vendor.dcgm.enabled" .) }}
+    - name: {{ include "vendor.dcgm.prologName" . }}
+    {{- end }}{{- /* if (include "vendor.dcgm.enabled" .) */}}
+  epilogScriptRefs:
+    {{- with .Values.epilogScripts }}
+    - name: {{ include "slurm.controller.epilogName" $ }}
+    {{- end }}{{- /* with .Values.epilogScripts */}}
+    {{- if (include "vendor.dcgm.enabled" .) }}
+    - name: {{ include "vendor.dcgm.epilogName" . }}
+    {{- end }}{{- /* if (include "vendor.dcgm.enabled" .) */}}
+  slurmctld:
+    {{- include "format-container" .Values.controller.slurmctld | nindent 4 }}
+  reconfigure:
+    {{- include "format-container" .Values.controller.reconfigure | nindent 4 }}
+  logfile:
+    {{- include "format-container" .Values.controller.logfile | nindent 4 }}
+  {{- include "format-podTemplate" $podTemplate | nindent 2 }}
+  {{- with .Values.controller.persistence }}
+  persistence:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with .Values.controller.persistence */}}
+  {{- with .Values.controller.service }}
+  service:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with .Values.controller.service */}}

@@ -1,0 +1,24 @@
+annotations:
+  license: Apache-2.0
+apiVersion: v2
+appVersion: "25.05"
+dependencies:
+- condition: slurm-exporter.enabled
+  name: slurm-exporter
+  repository: oci://ghcr.io/slinkyproject/charts
+  version: 0.4.0
+description: Slurm Cluster
+home: https://slurm.schedmd.com/
+icon: https://github.com/SlinkyProject/docs/blob/main/docs/_static/images/slurm-square-500.png
+kubeVersion: '>= 1.29'
+maintainers:
+- email: slinky@schedmd.com
+  name: SchedMD LLC.
+  url: https://support.schedmd.com/
+name: slurm
+sources:
+- https://github.com/SchedMD/slurm
+- https://github.com/SlinkyProject/containers
+- https://github.com/SlinkyProject/slurm-operator
+type: application
+version: 0.4.0

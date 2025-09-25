@@ -1,0 +1,81 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.exporter.enabled }}
+{{- if not $.Values.exporter.secretName }}
+  {{- fail "Slurm exporter requires `exporter.secretName` be set." -}}
+{{- end }}{{- /* if not $.Values.exporter.secretName */}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "slurm-exporter.name" . }}
+  namespace: {{ include "slurm-exporter.namespace" . }}
+  labels:
+    {{- include "slurm-exporter.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.exporter.replicas | default 1 }}
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      {{- include "slurm-exporter.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: metrics
+      labels:
+        {{- include "slurm-exporter.labels" . | nindent 8 }}
+    spec:
+      hostname: {{ include "slurm-exporter.name" . }}
+      priorityClassName: {{ .Values.exporter.priorityClassName | default .Values.priorityClassName }}
+      automountServiceAccountToken: false
+      {{- with .Values.exporter.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}{{- /* with .Values.exporter.affinity */}}
+      {{- with .Values.exporter.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}{{- /* with .Values.exporter.tolerations */}}
+      {{- include "slurm-exporter.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: metrics
+          image: {{ include "slurm-exporter.imageRef" . }}
+          imagePullPolicy: {{ .Values.exporter.imagePullPolicy | default (include "slurm-exporter.imagePullPolicy" .) }}
+          securityContext:
+            {{- include "slurm-exporter.securityContext" . | nindent 12 }}
+          {{- with .Values.exporter.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}{{- /* with .Values.exporter.resources */}}
+          args:
+            - --server
+            - {{ printf "http://%s.%s:%s" (include "slurm-exporter.restapi.name" .) (include "slurm-exporter.namespace" .) (include "slurm-exporter.restapi.port" .) }}
+            {{- with .Values.exporter.logLevel }}
+            - --zap-log-level
+            - {{ . | quote }}
+            {{- end }}{{- /* with .Values.exporter.logLevel */}}
+            {{- with .Values.exporter.cacheFrequency }}
+            - --cache-freq
+            - {{ . }}
+            {{- end }}{{- /* with .Values.exporter.cacheFrequency */}}
+          ports:
+            - name: metrics
+              containerPort: {{ include "slurm-exporter.port" . }}
+          startupProbe:
+            tcpSocket:
+              port: metrics
+          livenessProbe:
+            tcpSocket:
+              port: metrics
+          readinessProbe:
+            tcpSocket:
+              port: metrics
+          env:
+          - name: SLURM_JWT
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.exporter.secretName }}
+                key: auth-token
+{{- end }}{{- /* if .Values.exporter.enabled */}}
