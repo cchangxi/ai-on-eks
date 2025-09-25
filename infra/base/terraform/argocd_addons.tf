@@ -88,6 +88,17 @@ resource "kubectl_manifest" "cert_manager_yaml" {
   ]
 }
 
+# Slinky Slurm Operator CRDS
+resource "kubectl_manifest" "slurm_operator_crds_yaml" {
+  count     = var.enable_slurm_operator ? 1 : 0
+  yaml_body = file("${path.module}/argocd-addons/slurm-operator-crds.yaml")
+
+  depends_on = [
+    module.eks_blueprints_addons,
+    kubectl_manifest.cert_manager_yaml
+  ]
+}
+
 # Slinky Slurm Operator
 resource "kubectl_manifest" "slurm_operator_yaml" {
   count     = var.enable_slurm_operator ? 1 : 0
@@ -95,7 +106,8 @@ resource "kubectl_manifest" "slurm_operator_yaml" {
 
   depends_on = [
     module.eks_blueprints_addons,
-    kubectl_manifest.cert_manager_yaml
+    kubectl_manifest.cert_manager_yaml,
+    kubectl_manifest.slurm_operator_crds_yaml
   ]
 }
 
