@@ -119,8 +119,8 @@ loginsets:
       volumeMounts:
         - name: fsx-lustre
           mountPath: /fsx
-    rootSshAuthorizedKeys:
-      - ${ssh_key}
+    rootSshAuthorizedKeys: |
+      ${ssh_key}
     extraSshdConfig: |
       AuthorizedKeysFile /root/.ssh/authorized_keys
       ChallengeResponseAuthentication no
