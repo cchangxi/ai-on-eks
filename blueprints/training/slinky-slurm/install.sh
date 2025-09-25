@@ -73,8 +73,8 @@ helm install slurm ./slurm \
  --values=slurm-values.yaml --version=0.4.0 --namespace=slurm --create-namespace
 
 # Wait for the slurm-login service to exist
-until kubectl get service slurm-login -n slurm >/dev/null 2>&1; do
-  echo "Waiting for slurm-login service..."
+until kubectl get service slurm-login-slinky -n slurm >/dev/null 2>&1; do
+  echo "Waiting for slurm-login-slinky service..."
   sleep 5
 done
 
@@ -87,4 +87,4 @@ sed "s|\${ip_address}|${IP_ADDRESS}|g" \
   slurm-login-service-patch.yaml.template > slurm-login-service-patch.yaml
 
 # Apply the service patch
-kubectl patch service slurm-login -n slurm --patch-file slurm-login-service-patch.yaml
+kubectl patch service slurm-login-slinky -n slurm --patch-file slurm-login-service-patch.yaml
