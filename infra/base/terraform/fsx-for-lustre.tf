@@ -37,6 +37,11 @@ resource "aws_fsx_data_repository_association" "this" {
       events = ["NEW", "CHANGED", "DELETED"]
     }
   }
+
+  timeouts {
+    create = "30m"   # 默认10m，这里加大到30分钟更稳妥
+    delete = "30m"
+  }
 }
 
 #---------------------------------------------------------------
